@@ -1,0 +1,72 @@
+killing<- read.csv("~/Downloads/Police_killings.csv")
+library(dplyr)
+library(gridExtra)
+keep<- c("age", "gender", "raceethnicity", "month", "city", "state", "lawenforcementagency", "cause", "armed", "h_income", "day")
+killings<- killing[keep]
+str(killings)
+killings.age<- as.integer(killing$age)
+killings$gender<- as.factor(killing$gender)
+killings$raceethnicity<- as.factor(killing$raceethnicity)
+killings$month<- as.factor(killing$month)
+View(killings)
+library(ggplot2)
+
+##Gender Graph
+gender_tab<-table(killings$gender)
+barplot(gender_tab, col=c("red", "blue"))
+##Monthly graph
+month_tab<- table(killings$month)
+unique(killings$month)
+month_df<- data.frame(month_tab)
+month_graph<- ggplot(month_df, aes(Var1,Freq, group=1 )) + geom_point()+ geom_line() +
+  xlab("Month") + ylab("Frequency") + ggtitle("Number of Killings per Month")
+##Day Graph
+days_tab<- table(killings$day)
+days_df<- data.frame(days_tab)
+daygraph<- ggplot(days_df, aes(Var1, Freq, group=1)) + geom_point() + geom_line() + 
+  xlab("Day of the Month") + ylab("Frequency") + ggtitle("Number of Killings per Day of the Month")
+##age histogram
+hist(killings$age, col="green")
+## Race
+race_tab<-table(killings$raceethnicity)
+par(las=2) # make label text perpendicular to axis
+par(mar=c(5,10,4,2)) # increase y-axis margin.
+barplot(race_tab, horiz=TRUE, col=c("deepskyblue", "deepskyblue4", "dodgerblue", "darkturquoise", "cadetblue", "aquamarine3"))
+race_df<- data.frame(race_tab)
+race_graph<- ggplot(race_df, aes(Var1,Freq, fill=Var1)) + geom_col()+ coord_flip() + theme(legend.position="none")+
+  xlab("Race/Ethnicity") + ylab("Frequency") + ggtitle("Victims by Race")
+race_graph
+loc<- killings %>% group_by(state) %>% summarize(n=n()) %>% arrange(desc(n))
+race_df<- race_df %>% mutate("Percentage"= (Freq/467)*100)
+race_graph2<- ggplot(race_df, aes(Var1,Percentage, fill=Var1)) + geom_col()+ coord_flip() + theme(legend.position="none")+
+  xlab("Race/Ethnicity") + ggtitle("Victims by Race")
+##By state
+loc<- killings %>% group_by(state) %>% summarize(n=n()) %>% arrange(desc(n))
+cali<- killings %>% group_by(state, city) %>% summarize(n=n()) %>% filter(state==CA)
+##Cause of death
+cause_tab<- killings %>% group_by(cause) %>% summarize(N_killed=n()) %>% mutate(Percent= (N_killed/467)*100) %>% arrange(desc(Percent))
+cause_percentage<- ggplot(t2, aes(cause, Percent, fill=cause)) + geom_col() + ggtitle("Causes of Death") + xlab("Cause of Death") + ylab("Percent")+theme(legend.position="none")
+cause_count<- ggplot(t2, aes(cause, N_killed, fill=cause)) + geom_col() + ggtitle("Causes of Death") + xlab("Cause of Death") + ylab("Number Killed")+theme(legend.position="none")
+grid.arrange(cause_count, cause_percentage)
+killings<- killings %>% mutate(armed_alt= ifelse(armed %in% yes, "Armed", "Unarmed"))
+
+##armed killings graph
+armed_killings<-table(killings$armed_alt, killings$cause)
+par(las=1)
+barplot(armed_killings, main="Armed vs. Unarmed Killings", xlab="Cause of Death", col=c("Dodgerblue", "turquoise"), legend=rownames(armed_killings))
+barplot(kc, col=c("deepskyblue", "deepskyblue4", "dodgerblue", "darkturquoise", "cadetblue", "aquamarine3"), main="Causes of Death for Victims", xlab="Cause")
+
+##County Killings
+agency<- killings %>% group_by(lawenforcementagency) %>% summarize(N_killings= n()) %>% arrange(desc(N_killings))
+hist(agency$N_killings, main="Histogram of Number of Killings Per Agency", xlab="Number of Police Killings")
+
+##Statistical Test
+med<- 55775
+killings<- killings %>% mutate(sign_test= ifelse(h_income<55775, 0, ifelse(h_income>55775,1,NA)))
+table(killings$sign_test)
+below<- 346
+above<-119
+expected_frequency<-467/2
+chi_s<- (((below-expected_frequency)^2)/expected_frequency)+ (((above-expected_frequency)^2)/expected_frequency)
+
+binom.test(119,467)
